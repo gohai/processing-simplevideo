@@ -2,7 +2,7 @@ TARGET := libsimplevideo.so
 OBJS := impl.o
 CC := gcc
 
-CFLAGS := -fPIC -g
+CFLAGS := -std=c99 -fPIC -g
 CFLAGS += -I/usr/java/latest/include
 CFLAGS += -I/usr/java/latest/include/linux
 CFLAGS += $(shell pkg-config gstreamer-1.0 --cflags-only-I)
