@@ -1,13 +1,34 @@
 TARGET := libsimplevideo.so
 OBJS := impl.o
 CC := gcc
+PLATFORM := $(shell uname -s)
+
 
 CFLAGS := -std=c99 -fPIC -g
-CFLAGS += -I/usr/java/latest/include
-CFLAGS += -I/usr/java/latest/include/linux
+ifeq ($(PLATFORM),Linux)
+	# XXX: derive from javac location
+	CFLAGS += -I/usr/java/latest/include
+	CFLAGS += -I/usr/java/latest/include/linux
+endif
+ifeq ($(PLATFORM),Darwin)
+	CFLAGS += -arch i386 -arch x86_64
+	CFLAGS += -I/Library/Java/JavaVirtualMachines/jdk1.8.0_51.jdk/Contents/Home/include
+	CFLAGS += -I/Library/Java/JavaVirtualMachines/jdk1.8.0_51.jdk/Contents/Home/include/darwin
+endif
+# XXX: still needs gstreamer headers installed on OS X (e.g. with "brew install gstreamer")
 CFLAGS += $(shell pkg-config gstreamer-1.0 --cflags-only-I)
+
+
 LDFLAGS := -shared
-LDFLAGS += $(shell pkg-config gstreamer-1.0 --libs)
+ifeq ($(PLATFORM),Linux)
+	LDFLAGS += $(shell pkg-config gstreamer-1.0 --libs)
+endif
+ifeq ($(PLATFORM),Darwin)
+	LDFLAGS += -arch i386 -arch x86_64
+	LDFLAGS += -L../../library/macosx
+	LDFLAGS += -lgstreamer-1.0.0 -lglib-2.0.0 -lgobject-2.0.0
+endif
+
 
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) $(LDFLAGS) $^ -o $@
@@ -17,5 +38,3 @@ iface.h:
 
 clean:
 	rm -f $(TARGET) $(OBJS)
-	rm -f iface.h
-	
