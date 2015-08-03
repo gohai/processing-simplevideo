@@ -2,7 +2,7 @@ import processing.simplevideo.SimpleVideo;
 SimpleVideo video;
 
 void setup() {
-  video = new SimpleVideo(this, "big-buck-bunny_trailer.webm");
+  video = new SimpleVideo(this, "transit.mov");
   video.loop();
   frameRate(10);
 }
