@@ -33,51 +33,6 @@ static void* simplevideo_mainloop(void *data) {
 }
 
 
-/*
-JNIEXPORT jobject JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1getFrame(JNIEnv * env, jobject jobj, jlong ptr)
-{
-	jobject imgdata = nil;
-	
-	JNF_COCOA_ENTER(env);
-	
-    SyphonNameboundClient* boundClient = jlong_to_ptr(ptr);
-	[(SyphonNameboundClient*)boundClient lockClient];
-	SyphonClient *client = [(SyphonNameboundClient*)boundClient client];
-	
-	SyphonImage* img = [client newFrameImageForContext:CGLGetCurrentContext()];	
-		
-	NSSize texSize = [img textureSize];
-
-	NSNumber *name = [NSNumber numberWithInt:[img textureName]];
-	NSNumber *width = [NSNumber numberWithFloat:texSize.width];
-	NSNumber *height = [NSNumber numberWithFloat:texSize.height];
-	
-    NSDictionary *dic = [[NSDictionary alloc] initWithObjectsAndKeys: 
-						 name, @"name", 
-						 width, @"width", 
-						 height, @"height", 
-						 nil];
-	
-	
-	JNFTypeCoercer* coecer = [JNFDefaultCoercions defaultCoercer];
-    [JNFDefaultCoercions addMapCoercionTo:coecer];
-    
-    imgdata = [coecer coerceNSObject:dic withEnv:env];
-	
-	[(SyphonImage*)img release];
-	
-	[(SyphonNameboundClient*)boundClient unlockClient];
-	
-	JNF_COCOA_EXIT(env);
-	
-	return imgdata;	
-}
-*/
-
-
-
-
-
 static gboolean simplevideo_bus_callback(GstBus *bus, GstMessage *message, gpointer data)
 {
 	//g_print("Got %s message\n", GST_MESSAGE_TYPE_NAME (message));
@@ -161,6 +116,9 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
   }
 
   //render using map_info.data
+//  https://developer.gnome.org/gstreamer/stable/gstreamer-GstMemory.html#GstMapInfo
+   callback(map_info.size);
+     
 //   jintArray newArray = env->NewIntArray(length);
 
 
@@ -181,6 +139,7 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
 JavaVM *g_vm;
 jobject g_obj;
 jmethodID g_mid;
+JNIEnv *g_env;
 
 JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1register
 	(JNIEnv *env, jobject obj) {
@@ -188,7 +147,8 @@ JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1re
 		// convert local to global reference 
         // (local will die after this method call)
 		g_obj = (*env)->NewGlobalRef(env, obj);
-
+        g_env = env;
+        
 		// save refs for callback
 		jclass g_clazz = (*env)->GetObjectClass(env, g_obj);
 		if (g_clazz == NULL) {
@@ -199,15 +159,39 @@ JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1re
 		if (g_mid == NULL) {
           g_print ("Unable to get method ref\n");
 		}
+		
+        // Acquire a pointer to the current JavaVM 
+        jsize jvmBufferLength = 1;                 // At most vmBufLength number of entries  will be written for the list of returned JavaVMs 
+        jsize jvmTotalNumberFound = 0;          // The total number of JavaVMs found 
+        JavaVM jvmBuffer[jvmBufferLength];        // Array of JavaVMs 
+        g_vm = jvmBuffer;         // Pointer to array of JavaVMs 
+        
+        // Problem:
+        // http://stackoverflow.com/questions/7118750/failed-to-locate-method-jni-getcreatedjavavms-in-the-libjvm-dylib-mac-os
+        // Solved by adding "-framework JavaVM" to LD flags
+        // http://octave.1599824.n4.nabble.com/java-package-and-MacOS-td4647144.html
+        jint result  = JNI_GetCreatedJavaVMs( &g_vm, jvmBufferLength,  &jvmTotalNumberFound); // Get all created JavaVMs 
+        g_print ("Number of JVMs found %i\n", jvmTotalNumberFound);
+        if (jvmTotalNumberFound < 1) {
+          g_print ("Unable to get JVM ref\n");
+          returnValue = FALSE;
+        }
 
 		return (jboolean)returnValue;
 }
 
+
+static void callback(gsize val) {
+  g_print ("buffer size %i\n", val);
+
+//  (*g_env)->CallVoidMethod(g_obj, g_mid, val);
+
 /*
-void callback(int val) {
-	JNIEnv * g_env;
+	JNIEnv *g_env;
 	// double check it's all ok
-	int getEnvStat = g_vm->GetEnv((void **)&g_env, JNI_VERSION_1_6);
+
+	int getEnvStat = (*g_vm)->GetEnv(g_vm, (void **)&g_env, JNI_VERSION_1_6);
+
 	if (getEnvStat == JNI_EDETACHED) {
 		std::cout << "GetEnv: not attached" << std::endl;
 		if (g_vm->AttachCurrentThread((void **) &g_env, NULL) != 0) {
@@ -226,8 +210,9 @@ void callback(int val) {
 	}
 
 	g_vm->DetachCurrentThread();
+	*/
 }
-*/
+
 
 
 
