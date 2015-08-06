@@ -3,6 +3,7 @@
 
 typedef struct video_type {
 	GstElement *play;
+	GstElement *sink;
 	GstBus *bus;
 	jobject obj;
 	int loop;

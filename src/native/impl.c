@@ -2,6 +2,7 @@
 #include <string.h>
 #include <jni.h>
 #include <gst/gst.h>
+#include <gst/app/app.h>
 #include "impl.h"
 #include "iface.h"
 
@@ -89,36 +90,140 @@ static video* get_video(long handle)
 	return NULL;
 }
 
+
+// http://stackoverflow.com/questions/28040857/gstreamer-write-appsink-to-filesink
+// http://stackoverflow.com/questions/24142381/probleme-with-the-pull-sample-signal-using-appsink
+// http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-appsink.html
+static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
+//   prog_data* pd = (prog_data*)user_data;
+
+  GstSample* sample = gst_app_sink_pull_sample(sink);
+  
+  if(sample == NULL) {
+    return GST_FLOW_ERROR;
+  }
+
+  GstBuffer* buffer = gst_sample_get_buffer(sample);
+
+  GstMemory* memory = gst_buffer_get_all_memory(buffer);
+  GstMapInfo map_info;
+
+  if(! gst_memory_map(memory, &map_info, GST_MAP_READ)) {
+    gst_memory_unref(memory);
+    gst_sample_unref(sample);
+    return GST_FLOW_ERROR;
+  }
+
+  //render using map_info.data
+
+  gst_memory_unmap(memory, &map_info);
+  gst_memory_unref(memory);
+  gst_sample_unref(sample);
+
+  g_print ("read sample!\n");
+
+  return GST_FLOW_OK;
+}
+
+
+// Idea: Use gst-gl element?
+// https://coaxion.net/blog/2014/04/opengl-support-in-gstreamer/
+// http://cgit.freedesktop.org/gstreamer/gst-plugins-bad/tree/tests/examples/gl/generic/doublecube/main.cpp
+
+
+#define CAPS "video/x-raw,format=RGB,width=640,height=360,pixel-aspect-ratio=1/1"
 JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadFile(JNIEnv *env, jobject obj, jstring _fn)
 {
+    GError *error = NULL;
+
 	video *v = new_video();
 	if (v == NULL) {
 		return 0L;
 	}
 
 	const char *fn = (*env)->GetStringUTFChars(env, _fn, JNI_FALSE);
-	v->play = gst_element_factory_make("playbin", "play");
 	gchar *uri;
 	if (strstr(fn, "://") == NULL) {
 		uri = gst_filename_to_uri(fn, NULL);
 	} else {
 		uri = g_strdup(fn);
 	}
-	g_object_set(G_OBJECT (v->play), "uri", uri, NULL);
-	g_free(uri);
-	(*env)->ReleaseStringUTFChars(env, _fn, fn);
+	
+    /* create a new pipeline */
+    gchar *descr = g_strdup_printf ("uridecodebin uri=%s ! videoconvert ! videoscale ! "
+                                    " appsink name=sink caps=\"" CAPS "\"", uri);                                     
+    g_free(uri);
+    (*env)->ReleaseStringUTFChars(env, _fn, fn);
+    
+    v->play = gst_parse_launch (descr, &error);
+
+    if (error != NULL) {
+      g_print ("could not construct pipeline: %s\n", error->message);
+      g_error_free (error);
+      exit (-1);
+    }
+
+  
+    /* set to PAUSED to make the first frame arrive in the sink */
+    GstStateChangeReturn ret = gst_element_set_state (v->play, GST_STATE_PAUSED);
+    switch (ret) {
+      case GST_STATE_CHANGE_FAILURE:
+        g_print ("failed to play the file\n");
+        exit (-1);
+      case GST_STATE_CHANGE_NO_PREROLL:
+        /* for live sources, we need to set the pipeline to PLAYING before we can
+         * receive a buffer. We don't do that yet */
+        g_print ("live sources not supported yet\n");
+        exit (-1);
+      default:
+        break;
+    }
+    /* This can block for up to 5 seconds. If your machine is really overloaded,
+     * it might time out before the pipeline prerolled and we generate an error. A
+     * better way is to run a mainloop and catch errors there. */
+    ret = gst_element_get_state (v->play, NULL, NULL, 5 * GST_SECOND);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+      g_print ("failed to play the file\n");
+      exit (-1);
+    }  
+    
+    /* get the duration */
+    gint64 duration;
+    gst_element_query_duration (v->play, GST_FORMAT_TIME, &duration);  
+  
+    //g_signal_connect(G_OBJECT(v->sink), "new-sample", G_CALLBACK (drawCallback), NULL);
+
+    /* get sink */
+//     http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-appsink.html
+    v->sink = gst_bin_get_by_name (GST_BIN (v->play), "sink");  
+    gst_app_sink_set_max_buffers (GST_APP_SINK(v->sink), 2); // limit number of buffers queued
+    gst_app_sink_set_drop(GST_APP_SINK(v->sink), TRUE ); // drop old buffers in queue when full
+
+// Using callbacks
+   GstAppSinkCallbacks* appsink_callbacks = (GstAppSinkCallbacks*)malloc(sizeof(GstAppSinkCallbacks));
+   appsink_callbacks->eos = NULL;
+   appsink_callbacks->new_preroll = NULL;
+   appsink_callbacks->new_sample = app_sink_new_sample;
+   gst_app_sink_set_callbacks(GST_APP_SINK(v->sink), appsink_callbacks, NULL, NULL);
+
+// Using signals
+//     gst_app_sink_set_emit_signals(GST_APP_SINK(v->sink), TRUE ); // Using signals
+//     g_signal_connect(G_OBJECT(v->sink), "new-sample", G_CALLBACK (app_sink_new_sample), NULL);
+
 
 	v->bus = gst_pipeline_get_bus(GST_PIPELINE (v->play));
 	gst_bus_add_watch(v->bus, simplevideo_bus_callback, loop);
 	gst_object_unref(v->bus);
-
+	
 	v->obj = obj;
-
-	//gst_object_unref(GST_OBJECT (play));
 
 	// XXX: vs jlong?
 	return (long)v;
 }
+
+
+
+
 
 JNIEXPORT void JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1play(JNIEnv *env, jobject obj, jlong handle, jboolean _play)
 {
