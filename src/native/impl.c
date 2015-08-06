@@ -91,7 +91,6 @@ static video* get_video(long handle)
 	return NULL;
 }
 
-
 // http://stackoverflow.com/questions/28040857/gstreamer-write-appsink-to-filesink
 // http://stackoverflow.com/questions/24142381/probleme-with-the-pull-sample-signal-using-appsink
 // http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-appsink.html
@@ -133,6 +132,7 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
 
 
 // Some general JNI references:
+// http://docs.oracle.com/javase/7/docs/technotes/guides/jni/
 // http://www.math.uni-hamburg.de/doc/java/tutorial/native1.1/implementing/method.html
 
 
@@ -140,7 +140,7 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
 JavaVM *g_vm;
 jobject g_obj;
 jmethodID g_mid;
-JNIEnv *g_env;
+JNIEnv *g_env_ch;
 
 // Following technique described in:
 // http://adamish.com/blog/archives/327
@@ -153,7 +153,7 @@ JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1re
 		// convert local to global reference 
         // (local will die after this method call)
 		g_obj = (*env)->NewGlobalRef(env, obj);
-        g_env = env;
+        g_env_ch = env;
         
 		// save refs for callback
 		jclass g_clazz = (*env)->GetObjectClass(env, g_obj);
@@ -212,21 +212,27 @@ static void callback(gsize val) {
       g_print ("Unknown status %i\n", getEnvStat);
     }
 
-/*
-	g_env->CallVoidMethod(g_obj, g_mid, val);
 
-	if (g_env->ExceptionCheck()) {
-		g_env->ExceptionDescribe();
+//     g_print ("JVM %i\n", g_vm);
+//     g_print ("Attached JNI environment %i\n", g_env);    
+//     g_print ("Cached environment %i\n", g_env_ch);    
+//     jclass jClz = (*g_env_ch)->FindClass(g_env_ch, "SimpleVideo");
+//  jmethodID jMid = (*g_env)->GetMethodID(g_env, jClz, "readFrame", "(I)V");
+// 	(*g_env)->CallVoidMethod(g_env, jClz, jMid, val);
+	
+	(*g_env)->CallVoidMethod(g_env, g_obj, g_mid, val);	
+// 	(*g_env_ch)->CallStaticVoidMethod(g_obj, g_mid, val);	
+	
+
+	if ((*g_env)->ExceptionCheck(g_env)) {
+		(*g_env)->ExceptionDescribe(g_env);
 	}
-	*/
-
 
 	(*g_vm)->DetachCurrentThread(g_vm);
 	
-    g_print ("buffer size %i\n", val);
+//     g_print ("buffer size %i\n", val);
 	
 }
-
 
 
 

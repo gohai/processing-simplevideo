@@ -96,7 +96,6 @@ public class SimpleVideo {
       System.out.println("data from gstreamer: " + val);
     }
 
-
 	private static native boolean gstreamer_init();
 	private native boolean gstreamer_register();	
 	private native long gstreamer_loadFile(String fn);
