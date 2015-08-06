@@ -14,6 +14,6 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data);
 static gboolean simplevideo_bus_callback(GstBus *bus, GstMessage *message, gpointer data);
 static video* new_video();
 static video* get_video(long handle);
-static void callback(gsize val);
+static void callback(GstMapInfo map_info);
 
 #endif

@@ -91,9 +91,9 @@ public class SimpleVideo {
 		return gstreamer_get_time(handle);
 	}
 
-    public void readFrame(int val) {
+    public void readFrame(int[] pixels) {
       // do stuff
-      System.out.println("data from gstreamer: " + val);
+      System.out.println("data from gstreamer: " + pixels.length);
     }
 
 	private static native boolean gstreamer_init();

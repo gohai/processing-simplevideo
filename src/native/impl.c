@@ -115,11 +115,7 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
   }
 
   //render using map_info.data
-//  https://developer.gnome.org/gstreamer/stable/gstreamer-GstMemory.html#GstMapInfo
-   callback(map_info.size);
-     
-//   jintArray newArray = env->NewIntArray(length);
-
+   callback(map_info);
 
   gst_memory_unmap(memory, &map_info);
   gst_memory_unref(memory);
@@ -134,6 +130,7 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
 // Some general JNI references:
 // http://docs.oracle.com/javase/7/docs/technotes/guides/jni/
 // http://www.math.uni-hamburg.de/doc/java/tutorial/native1.1/implementing/method.html
+// http://www.ibm.com/developerworks/library/j-jni/
 
 
 // cached refs for later callbacks
@@ -161,7 +158,7 @@ JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1re
           g_print ("Failed to find class\n");			
 		}
 
-		g_mid = (*env)->GetMethodID(env, g_clazz, "readFrame", "(I)V");
+		g_mid = (*env)->GetMethodID(env, g_clazz, "readFrame", "([I)V");
 		if (g_mid == NULL) {
           g_print ("Unable to get method ref\n");
 		}
@@ -187,11 +184,10 @@ JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1re
 }
 
 
-static void callback(gsize val) {
+static void callback(GstMapInfo map_info) {
 
 // calling from the cached environment crashes the java application
 //  (*g_env)->CallVoidMethod(g_obj, g_mid, val);
-
 
 	JNIEnv *g_env;
 	// double check it's all ok
@@ -212,16 +208,25 @@ static void callback(gsize val) {
       g_print ("Unknown status %i\n", getEnvStat);
     }
 
+//  https://developer.gnome.org/gstreamer/stable/gstreamer-GstMemory.html#GstMapInfo
+   gsize size = map_info.size;
 
-//     g_print ("JVM %i\n", g_vm);
-//     g_print ("Attached JNI environment %i\n", g_env);    
-//     g_print ("Cached environment %i\n", g_env_ch);    
-//     jclass jClz = (*g_env_ch)->FindClass(g_env_ch, "SimpleVideo");
-//  jmethodID jMid = (*g_env)->GetMethodID(g_env, jClz, "readFrame", "(I)V");
-// 	(*g_env)->CallVoidMethod(g_env, jClz, jMid, val);
-	
-	(*g_env)->CallVoidMethod(g_env, g_obj, g_mid, val);	
-// 	(*g_env_ch)->CallStaticVoidMethod(g_obj, g_mid, val);	
+  // Some faster methods: use a direct byte buffer:
+  // http://stackoverflow.com/questions/15339430/wrap-native-int-into-a-jintarray
+  // but what happens when the sample is unreferenced?
+
+    // The slowest possible way
+   jintArray pixels = (*g_env)->NewIntArray(g_env, size);
+   jint *body = (*g_env)->GetIntArrayElements(g_env, pixels, 0);
+   
+   for (int i =0; i < size; i++) {
+     body[i] = map_info.data[i];
+   }
+     // This crashes the application:
+//    (*g_env)->SetIntArrayRegion(g_env, pixels, 0 , size, map_info.data);
+
+
+	(*g_env)->CallVoidMethod(g_env, g_obj, g_mid, pixels);	
 	
 
 	if ((*g_env)->ExceptionCheck(g_env)) {
