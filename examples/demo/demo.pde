@@ -4,7 +4,7 @@ SimpleVideo video;
 void setup() {
   video = new SimpleVideo(this, "transit.mov");
   video.loop();
-  frameRate(10);
+  frameRate(30);
 }
 
 void draw() {
