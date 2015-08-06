@@ -2,6 +2,7 @@ package processing.simplevideo;
 
 import java.io.File;
 import processing.core.*;
+import java.lang.reflect.*;
 
 public class SimpleVideo {
 
@@ -9,9 +10,14 @@ public class SimpleVideo {
 	private static boolean error = false;
 
 	private long handle = 0;
+	private PApplet parent;
+    private Method movieEventMethod;
+
+    
 
 	public SimpleVideo(PApplet parent, String fn) {
 		super();
+        this.parent = parent; 
 
 		if (!loaded) {
 			//System.out.println(System.getProperty("java.library.path"));
@@ -51,6 +57,13 @@ public class SimpleVideo {
 		if (handle == 0) {
 			throw new RuntimeException("Could not load video");
 		}
+		
+        try {
+          movieEventMethod = parent.getClass().getMethod("movieEvent", int[].class);
+          return;
+        } catch (Exception e) {
+          // no such method, or an error... which is fine, just ignore
+        }		
 	}
 
 	public void dispose() {
@@ -94,6 +107,15 @@ public class SimpleVideo {
     public void readFrame(int[] pixels) {
       // do stuff
       System.out.println("data from gstreamer: " + pixels.length);
+      
+      if (movieEventMethod != null) {
+        try {
+          movieEventMethod.invoke(parent, pixels);
+        } catch (Exception e) {
+          e.printStackTrace();
+          movieEventMethod = null;
+        }   
+      }   
     }
 
 	private static native boolean gstreamer_init();

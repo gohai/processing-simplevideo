@@ -217,13 +217,8 @@ static void callback(GstMapInfo map_info) {
 
     // The slowest possible way
    jintArray pixels = (*g_env)->NewIntArray(g_env, size);
-   jint *body = (*g_env)->GetIntArrayElements(g_env, pixels, 0);
-   
-   for (int i =0; i < size; i++) {
-     body[i] = map_info.data[i];
-   }
-     // This crashes the application:
-//    (*g_env)->SetIntArrayRegion(g_env, pixels, 0 , size, map_info.data);
+   jint *body = (*g_env)->GetIntArrayElements(g_env, pixels, 0); // needs this, otherwise SetIntArrayRegion crashes the application
+   (*g_env)->SetIntArrayRegion(g_env, pixels, 0 , size, map_info.data);
 
 
 	(*g_env)->CallVoidMethod(g_env, g_obj, g_mid, pixels);	
