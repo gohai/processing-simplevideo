@@ -131,16 +131,22 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
   return GST_FLOW_OK;
 }
 
-// cached refs for later callbacks
-// http://stackoverflow.com/questions/6746078/implement-callback-function-in-jni-using-interface
-// http://www.math.uni-hamburg.de/doc/java/tutorial/native1.1/implementing/method.html
-// http://adamish.com/blog/archives/327
 
+// Some general JNI references:
+// http://www.math.uni-hamburg.de/doc/java/tutorial/native1.1/implementing/method.html
+
+
+// cached refs for later callbacks
 JavaVM *g_vm;
 jobject g_obj;
 jmethodID g_mid;
 JNIEnv *g_env;
 
+// Following technique described in:
+// http://adamish.com/blog/archives/327
+// First we need to register the callback method in java, and save the references.
+// Second, the callback needs to attach the current thread of the JVM because gstreamer
+// runs on a separate thread (I believe).
 JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1register
 	(JNIEnv *env, jobject obj) {
         int returnValue = TRUE;
@@ -182,35 +188,43 @@ JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1re
 
 
 static void callback(gsize val) {
-  g_print ("buffer size %i\n", val);
 
+// calling from the cached environment crashes the java application
 //  (*g_env)->CallVoidMethod(g_obj, g_mid, val);
 
-/*
+
 	JNIEnv *g_env;
 	// double check it's all ok
 
 	int getEnvStat = (*g_vm)->GetEnv(g_vm, (void **)&g_env, JNI_VERSION_1_6);
-
 	if (getEnvStat == JNI_EDETACHED) {
-		std::cout << "GetEnv: not attached" << std::endl;
-		if (g_vm->AttachCurrentThread((void **) &g_env, NULL) != 0) {
-			std::cout << "Failed to attach" << std::endl;
+		g_print ("GetEnv: not attached\n");
+		if ((*g_vm)->AttachCurrentThread(g_vm, (void **) &g_env, NULL) != 0) {
+			g_print ("Failed to attach\n");
+		} else {
+		  g_print ("Attached successfully!\n");
 		}
 	} else if (getEnvStat == JNI_OK) {
-		//
+		g_print ("Already attached!\n");
 	} else if (getEnvStat == JNI_EVERSION) {
-		std::cout << "GetEnv: version not supported" << std::endl;
-	}
+		g_print ("GetEnv: version not supported\n");
+	} else {
+      g_print ("Unknown status %i\n", getEnvStat);
+    }
 
+/*
 	g_env->CallVoidMethod(g_obj, g_mid, val);
 
 	if (g_env->ExceptionCheck()) {
 		g_env->ExceptionDescribe();
 	}
-
-	g_vm->DetachCurrentThread();
 	*/
+
+
+	(*g_vm)->DetachCurrentThread(g_vm);
+	
+    g_print ("buffer size %i\n", val);
+	
 }
 
 
