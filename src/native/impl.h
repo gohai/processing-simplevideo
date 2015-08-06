@@ -10,6 +10,7 @@ typedef struct video_type {
 } video;
 
 static void* simplevideo_mainloop(void *data);
+static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data);
 static gboolean simplevideo_bus_callback(GstBus *bus, GstMessage *message, gpointer data);
 static video* new_video();
 static video* get_video(long handle);

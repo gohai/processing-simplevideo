@@ -26,6 +26,12 @@ public class SimpleVideo {
 			throw new RuntimeException("Could not load gstreamer");
 		}
 
+        if (gstreamer_register()) {
+          System.out.println("Registered callback go pull frames from gstreamer!");
+        } else {
+          throw new RuntimeException("Could not register callback");
+        }
+
 		// get absolute path for fn
 		if (fn.indexOf("://") != -1) {
 			// got URI, use as is
@@ -85,12 +91,19 @@ public class SimpleVideo {
 		return gstreamer_get_time(handle);
 	}
 
+    public void readFrame(int val) {
+      // do stuff
+      System.out.println("data from gstreamer: " + val);
+    }
+
 
 	private static native boolean gstreamer_init();
+	private native boolean gstreamer_register();	
 	private native long gstreamer_loadFile(String fn);
 	private native void gstreamer_play(long handle, boolean play);
 	private native void gstreamer_seek(long handle, float sec);
 	private native void gstreamer_set_loop(long handle, boolean loop);
 	private native float gstreamer_get_duration(long handle);
 	private native float gstreamer_get_time(long handle);
+
 }

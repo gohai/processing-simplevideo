@@ -32,6 +32,52 @@ static void* simplevideo_mainloop(void *data) {
 	g_main_loop_run(loop);
 }
 
+
+/*
+JNIEXPORT jobject JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1getFrame(JNIEnv * env, jobject jobj, jlong ptr)
+{
+	jobject imgdata = nil;
+	
+	JNF_COCOA_ENTER(env);
+	
+    SyphonNameboundClient* boundClient = jlong_to_ptr(ptr);
+	[(SyphonNameboundClient*)boundClient lockClient];
+	SyphonClient *client = [(SyphonNameboundClient*)boundClient client];
+	
+	SyphonImage* img = [client newFrameImageForContext:CGLGetCurrentContext()];	
+		
+	NSSize texSize = [img textureSize];
+
+	NSNumber *name = [NSNumber numberWithInt:[img textureName]];
+	NSNumber *width = [NSNumber numberWithFloat:texSize.width];
+	NSNumber *height = [NSNumber numberWithFloat:texSize.height];
+	
+    NSDictionary *dic = [[NSDictionary alloc] initWithObjectsAndKeys: 
+						 name, @"name", 
+						 width, @"width", 
+						 height, @"height", 
+						 nil];
+	
+	
+	JNFTypeCoercer* coecer = [JNFDefaultCoercions defaultCoercer];
+    [JNFDefaultCoercions addMapCoercionTo:coecer];
+    
+    imgdata = [coecer coerceNSObject:dic withEnv:env];
+	
+	[(SyphonImage*)img release];
+	
+	[(SyphonNameboundClient*)boundClient unlockClient];
+	
+	JNF_COCOA_EXIT(env);
+	
+	return imgdata;	
+}
+*/
+
+
+
+
+
 static gboolean simplevideo_bus_callback(GstBus *bus, GstMessage *message, gpointer data)
 {
 	//g_print("Got %s message\n", GST_MESSAGE_TYPE_NAME (message));
@@ -115,6 +161,8 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
   }
 
   //render using map_info.data
+//   jintArray newArray = env->NewIntArray(length);
+
 
   gst_memory_unmap(memory, &map_info);
   gst_memory_unref(memory);
@@ -124,6 +172,66 @@ static GstFlowReturn app_sink_new_sample(GstAppSink *sink, gpointer user_data) {
 
   return GST_FLOW_OK;
 }
+
+// cached refs for later callbacks
+// http://stackoverflow.com/questions/6746078/implement-callback-function-in-jni-using-interface
+// http://www.math.uni-hamburg.de/doc/java/tutorial/native1.1/implementing/method.html
+// http://adamish.com/blog/archives/327
+
+JavaVM *g_vm;
+jobject g_obj;
+jmethodID g_mid;
+
+JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1register
+	(JNIEnv *env, jobject obj) {
+        int returnValue = TRUE;
+		// convert local to global reference 
+        // (local will die after this method call)
+		g_obj = (*env)->NewGlobalRef(env, obj);
+
+		// save refs for callback
+		jclass g_clazz = (*env)->GetObjectClass(env, g_obj);
+		if (g_clazz == NULL) {
+          g_print ("Failed to find class\n");			
+		}
+
+		g_mid = (*env)->GetMethodID(env, g_clazz, "readFrame", "(I)V");
+		if (g_mid == NULL) {
+          g_print ("Unable to get method ref\n");
+		}
+
+		return (jboolean)returnValue;
+}
+
+/*
+void callback(int val) {
+	JNIEnv * g_env;
+	// double check it's all ok
+	int getEnvStat = g_vm->GetEnv((void **)&g_env, JNI_VERSION_1_6);
+	if (getEnvStat == JNI_EDETACHED) {
+		std::cout << "GetEnv: not attached" << std::endl;
+		if (g_vm->AttachCurrentThread((void **) &g_env, NULL) != 0) {
+			std::cout << "Failed to attach" << std::endl;
+		}
+	} else if (getEnvStat == JNI_OK) {
+		//
+	} else if (getEnvStat == JNI_EVERSION) {
+		std::cout << "GetEnv: version not supported" << std::endl;
+	}
+
+	g_env->CallVoidMethod(g_obj, g_mid, val);
+
+	if (g_env->ExceptionCheck()) {
+		g_env->ExceptionDescribe();
+	}
+
+	g_vm->DetachCurrentThread();
+}
+*/
+
+
+
+
 
 
 // Idea: Use gst-gl element?
