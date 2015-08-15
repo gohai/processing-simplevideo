@@ -33,6 +33,7 @@ JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1in
 static void* simplevideo_mainloop(void *data) {
   loop = g_main_loop_new(NULL, FALSE);
   g_main_loop_run(loop);
+  return NULL;
 }
 
 
@@ -103,7 +104,7 @@ JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadF
 
   video *v = new_video();
   if (v == NULL) {
-    return NULL;
+    return 0L;
   }
 
   // encode filename as an uri
@@ -128,7 +129,7 @@ JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadF
     g_print("Could not construct pipeline: %s\n", error->message);
     g_error_free(error);
     g_free(descr);
-    return NULL;
+    return 0L;
   }
 
   // setup appsink if the pipeline  is using it
@@ -289,16 +290,16 @@ JNIEXPORT jbyteArray JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1
 {
   video *v = get_video(handle);
   if (v == NULL) {
-    return NULL;
+    return 0L;
   }
 
   if (v->buf[0] == NULL) {
-    return NULL;
+    return 0L;
   }
 
   // LOCK
   jbyteArray ret = (*env)->NewByteArray(env, v->buf[0]->size);
-  (*env)->SetByteArrayRegion(env, ret, 0, v->buf[0]->size, v->buf[0]->data);
+  (*env)->SetByteArrayRegion(env, ret, 0, v->buf[0]->size, (const jbyte*)v->buf[0]->data);
   // UNLOCK
   return ret;
 }
