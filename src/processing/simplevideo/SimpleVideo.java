@@ -145,7 +145,6 @@ public class SimpleVideo {
 
     PImage frame = parent.createImage(640, 360, PConstants.RGB);
 
-    // XXX: not working quite right
     // XXX: we also need to handle the audio somehow
     int idx = 0;
     frame.loadPixels();
@@ -153,9 +152,9 @@ public class SimpleVideo {
       int ri = 3 * i + 0;
       int gi = 3 * i + 1;
       int bi = 3 * i + 2;
-      int r = buffer[ri];
-      int g = buffer[gi];
-      int b = buffer[bi];
+      int r = buffer[ri] & 0xff;
+      int g = buffer[gi] & 0xff;
+      int b = buffer[bi] & 0xff;
       frame.pixels[idx++] = 0xFF000000 | (r << 16) | (g << 8) | b;
     }
     frame.updatePixels();
