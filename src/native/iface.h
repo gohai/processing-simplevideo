@@ -68,7 +68,7 @@ JNIEXPORT jfloat JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1get_
  * Method:    gstreamer_get_frame
  * Signature: (J)[B
  */
-JNIEXPORT jbyteArray JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1get_1frame
+JNIEXPORT jint JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1get_1frame
   (JNIEnv *, jobject, jlong);
 
 #ifdef __cplusplus

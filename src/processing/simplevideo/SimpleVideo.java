@@ -52,7 +52,7 @@ public class SimpleVideo {
     // first %s is the uri (filled in by native code)
     // appsink must be named "sink" (XXX: change)
 //     String pipeline = "uridecodebin uri=%s ! videoconvert ! video/x-raw,format=ARGB ! videoscale ! glimagesink name=sink caps=\"" + caps + "\"";
-    String pipeline = "uridecodebin uri=%s ! videoconvert ! video/x-raw,format=ARGB ! videoscale ! glupload ! appsink name=sink";
+    String pipeline = "uridecodebin uri=%s ! videoconvert ! " + caps + " ! videoscale ! glupload ! appsink name=sink";
     // alternatively, a standalone window
     //private static String pipeline = "playbin uri=%s";
 
@@ -147,7 +147,10 @@ public class SimpleVideo {
     return gstreamer_get_time(handle);
   }
 
-  public PImage getFrame() {
+  public int getFrame() {
+    int tex = gstreamer_get_frame(handle);
+    System.out.println("texture " + tex);
+  /*
     byte[] buffer = gstreamer_get_frame(handle);
     if (buffer == null) {
       return null;
@@ -171,8 +174,10 @@ public class SimpleVideo {
 //       frame.pixels[idx++] = 0xFF000000 | (r << 16) | (g << 8) | b;
 //     }
 //     frame.updatePixels();
+*/
 
-    return frame;
+
+    return tex;
   }
 
   /*
@@ -193,5 +198,5 @@ public class SimpleVideo {
   private native void gstreamer_set_loop(long handle, boolean loop);
   private native float gstreamer_get_duration(long handle);
   private native float gstreamer_get_time(long handle);
-  private native byte[] gstreamer_get_frame(long handle);
+  private native int gstreamer_get_frame(long handle);
 }
