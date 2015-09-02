@@ -1,0 +1,3 @@
+bin/
+src/native/*.o
+src/native/*.so
