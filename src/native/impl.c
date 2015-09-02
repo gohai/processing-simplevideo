@@ -134,8 +134,8 @@ JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadF
   }
 
   // setup appsink if the pipeline  is using it
-  if (strstr(descr, "glimagesink")) {
-    setupGLsink(v);
+  if (strstr(descr, "appsink")) {
+    setupAppsink(v);
   }
   g_free(descr);
 
@@ -216,24 +216,24 @@ JNIEXPORT jfloat JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1get_
 }
 
 
-void setupGLsink(video *v)
+void setupAppsink(video *v)
 {
   // get sink
   // set http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-base-libs/html/gst-plugins-base-libs-appsink.html
   // XXX: use gst_bin_get_by_interface
   v->sink = gst_bin_get_by_name(GST_BIN (v->play), "sink");
-//   gst_app_sink_set_max_buffers(GST_APP_SINK(v->sink), 2); // limit number of buffers queued
-//   gst_app_sink_set_drop(GST_APP_SINK(v->sink), TRUE );    // drop old buffers in queue when full
+  gst_app_sink_set_max_buffers(GST_APP_SINK(v->sink), 2); // limit number of buffers queued
+  gst_app_sink_set_drop(GST_APP_SINK(v->sink), TRUE );    // drop old buffers in queue when full
 
   // setup callbacks (faster than signals)
-//   GstAppSinkCallbacks* appsink_callbacks = (GstAppSinkCallbacks*)malloc(sizeof(GstAppSinkCallbacks));
-//   appsink_callbacks->eos = NULL;
-//   appsink_callbacks->new_preroll = NULL;
-//   appsink_callbacks->new_sample = appsink_new_sample;
-//   gst_app_sink_set_callbacks(GST_APP_SINK(v->sink), appsink_callbacks, v, NULL);
-//   free(appsink_callbacks);
+  GstAppSinkCallbacks* appsink_callbacks = (GstAppSinkCallbacks*)malloc(sizeof(GstAppSinkCallbacks));
+  appsink_callbacks->eos = NULL;
+  appsink_callbacks->new_preroll = NULL;
+  appsink_callbacks->new_sample = appsink_new_sample;
+  gst_app_sink_set_callbacks(GST_APP_SINK(v->sink), appsink_callbacks, v, NULL);
+  free(appsink_callbacks);
 
-   g_signal_connect(G_OBJECT(v->sink), "client-draw", G_CALLBACK (drawCallback), NULL);
+//    g_signal_connect(G_OBJECT(v->sink), "client-draw", G_CALLBACK (drawCallback), NULL);
 }
 
 
@@ -271,80 +271,6 @@ static gboolean drawCallback (GstElement * gl_sink, GstGLContext *context, GstSa
     
     g_print("draw: %i\n", texture);
 
-/*
-
-
-
-
-
-
-    if ((current_time.tv_sec - last_sec) >= 1)
-    {
-        std::cout << "GRAPHIC FPS of the scene which contains the custom cube) = " << nbFrames << std::endl;
-        nbFrames = 0;
-        last_sec = current_time.tv_sec;
-    }
-
-    glEnable(GL_DEPTH_TEST);
-
-    glEnable (GL_TEXTURE_2D);
-    glBindTexture (GL_TEXTURE_2D, texture);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri (GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexEnvi (GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    glTranslatef(0.0f,0.0f,-5.0f);
-
-    glRotatef(xrot,1.0f,0.0f,0.0f);
-    glRotatef(yrot,0.0f,1.0f,0.0f);
-    glRotatef(zrot,0.0f,0.0f,1.0f);
-
-    glBegin(GL_QUADS);
-	      // Front Face
-	      glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-	      glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-	      glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-	      glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-	      // Back Face
-	      glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-	      glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
-	      glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
-	      glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
-	      // Top Face
-	      glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
-	      glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-	      glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-	      glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
-	      // Bottom Face
-	      glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-	      glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
-	      glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-	      glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-	      // Right face
-	      glTexCoord2f(0.0f, 0.0f); glVertex3f( 1.0f, -1.0f, -1.0f);
-	      glTexCoord2f(0.0f, 1.0f); glVertex3f( 1.0f,  1.0f, -1.0f);
-	      glTexCoord2f(1.0f, 1.0f); glVertex3f( 1.0f,  1.0f,  1.0f);
-	      glTexCoord2f(1.0f, 0.0f); glVertex3f( 1.0f, -1.0f,  1.0f);
-	      // Left Face
-	      glTexCoord2f(1.0f, 0.0f); glVertex3f(-1.0f, -1.0f, -1.0f);
-	      glTexCoord2f(0.0f, 0.0f); glVertex3f(-1.0f, -1.0f,  1.0f);
-	      glTexCoord2f(0.0f, 1.0f); glVertex3f(-1.0f,  1.0f,  1.0f);
-	      glTexCoord2f(1.0f, 1.0f); glVertex3f(-1.0f,  1.0f, -1.0f);
-    glEnd();
-
-    gst_video_frame_unmap (&v_frame);
-
-    xrot+=0.03f;
-    yrot+=0.02f;
-    zrot+=0.04f;
-*/
-
     return TRUE;
 }
 
@@ -366,29 +292,48 @@ static GstFlowReturn appsink_new_sample(GstAppSink *sink, gpointer user_data)
 
   GstBuffer* buffer = gst_sample_get_buffer(sample);
 
-  GstMemory* memory = gst_buffer_get_all_memory(buffer);
-  GstMapInfo* map_info = malloc(sizeof(GstMapInfo));
 
-  if(!gst_memory_map(memory, map_info, GST_MAP_READ)) {
-    gst_memory_unref(memory);
-    gst_sample_unref(sample);
-    return GST_FLOW_ERROR;
-  }
+    GstVideoFrame v_frame;
+    GstVideoInfo v_info;
+    guint texture = 0;
+    GstBuffer *buf = gst_sample_get_buffer (sample);
+    GstCaps *caps = gst_sample_get_caps (sample);
 
-  video *v = (video*)user_data;
-  if (v->buf[1] != NULL) {
-    // free previous sample
-    GstMapInfo *old_map_info = v->buf[1];
-    GstMemory *old_memory = old_map_info->memory;
-    gst_memory_unmap(old_memory, old_map_info);
-    gst_memory_unref(old_memory);
-    free(old_map_info);
-    v->buf[1] = NULL;
-  }
-  // LOCK
-  v->buf[1] = v->buf[0];
-  v->buf[0] = map_info;
-  // UNLOCK
+    gst_video_info_from_caps (&v_info, caps);    
+    if (!gst_video_frame_map (&v_frame, &v_info, buf, (GstMapFlags) (GST_MAP_READ | GST_MAP_GL))) {
+      g_warning ("Failed to map the video buffer");
+      return TRUE;
+    }    
+    
+    texture = *(guint *) v_frame.data[0];
+    
+  g_print("draw: %i\n", texture);
+
+//   GstMemory* memory = gst_buffer_get_all_memory(buffer);
+//   GstMapInfo* map_info = malloc(sizeof(GstMapInfo));
+// 
+//   if(!gst_memory_map(memory, map_info, GST_MAP_READ)) {
+//     gst_memory_unref(memory);
+//     gst_sample_unref(sample);
+//     return GST_FLOW_ERROR;
+//   }
+// 
+//   video *v = (video*)user_data;
+//   if (v->buf[1] != NULL) {
+//     // free previous sample
+//     GstMapInfo *old_map_info = v->buf[1];
+//     GstMemory *old_memory = old_map_info->memory;
+//     gst_memory_unmap(old_memory, old_map_info);
+//     gst_memory_unref(old_memory);
+//     free(old_map_info);
+//     v->buf[1] = NULL;
+//   }
+//   // LOCK
+//   v->buf[1] = v->buf[0];
+//   v->buf[0] = map_info;
+//   // UNLOCK
+
+  gst_video_frame_unmap (&v_frame);
 
   //gst_memory_unmap(memory, &map_info);
   //gst_memory_unref(memory);

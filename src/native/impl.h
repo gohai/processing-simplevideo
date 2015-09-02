@@ -17,6 +17,6 @@ static gboolean simplevideo_bus_callback(GstBus *bus, GstMessage *message, gpoin
 static video* new_video();
 static video* get_video(long handle);
 static void callback(GstMapInfo map_info);
-static void setupGLsink(video *v);
+static void setupAppsink(video *v);
 
 #endif
