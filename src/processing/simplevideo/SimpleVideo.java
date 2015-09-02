@@ -23,6 +23,7 @@
 package processing.simplevideo;
 
 import java.io.File;
+import java.nio.*;
 import java.lang.reflect.*;
 import processing.core.*;
 
@@ -31,23 +32,29 @@ public class SimpleVideo {
   protected static boolean loaded = false;
   protected static boolean error = false;
 
-  // capabilities passed to GStreamer
-  protected static String caps = "video/x-raw,format=RGB,width=640,height=360,pixel-aspect-ratio=1/1";
-
-  // pipeline description passed to GStreamer
-  // first %s is the uri (filled in by native code)
-  // appsink must be named "sink" (XXX: change)
-  private static String pipeline = "uridecodebin uri=%s ! videoconvert ! videoscale ! appsink name=sink caps=\"" + caps + "\"";
-  // alternatively, a standalone window
-  //private static String pipeline = "playbin uri=%s";
 
   private PApplet parent;
   private Method movieEventMethod;
   private long handle = 0;
+  private PImage frame;
 
   public SimpleVideo(PApplet parent, String fn) {
     super();
     this.parent = parent;
+
+    int w = parent.width;
+    int h = parent.height;
+ 
+    // capabilities passed to GStreamer
+    String caps = "video/x-raw,format=ARGB,width=" + w + ",height=" + h + ",pixel-aspect-ratio=1/1";
+
+    // pipeline description passed to GStreamer
+    // first %s is the uri (filled in by native code)
+    // appsink must be named "sink" (XXX: change)
+    String pipeline = "uridecodebin uri=%s ! videoconvert ! video/x-raw,format=ARGB ! videoscale ! appsink name=sink caps=\"" + caps + "\"";
+    // alternatively, a standalone window
+    //private static String pipeline = "playbin uri=%s";
+
 
     if (!loaded) {
       System.loadLibrary("simplevideo");
@@ -86,6 +93,8 @@ public class SimpleVideo {
     } catch (Exception e) {
       // no event method declared, ignore
     }
+    frame = parent.createImage(parent.width, parent.height, PConstants.RGB);
+    frame.loadPixels();
   }
 
   public void dispose() {
@@ -142,22 +151,25 @@ public class SimpleVideo {
     if (buffer == null) {
       return null;
     }
+//     PApplet.println(buffer.length/4 + " " + frame.pixels.length);
 
-    PImage frame = parent.createImage(640, 360, PConstants.RGB);
+
+    final ByteBuffer buf = ByteBuffer.wrap(buffer).order(ByteOrder.BIG_ENDIAN);
+    buf.asIntBuffer().get(frame.pixels);
+    frame.updatePixels();
 
     // XXX: we also need to handle the audio somehow
-    int idx = 0;
-    frame.loadPixels();
-    for (int i = 0; i < buffer.length/3; i++) {
-      int ri = 3 * i + 0;
-      int gi = 3 * i + 1;
-      int bi = 3 * i + 2;
-      int r = buffer[ri] & 0xff;
-      int g = buffer[gi] & 0xff;
-      int b = buffer[bi] & 0xff;
-      frame.pixels[idx++] = 0xFF000000 | (r << 16) | (g << 8) | b;
-    }
-    frame.updatePixels();
+//     int idx = 0;
+//     for (int i = 0; i < buffer.length/4; i++) {
+//       int ri = 4 * i + 1;
+//       int gi = 4 * i + 2;
+//       int bi = 4 * i + 3;
+//       int r = buffer[ri] & 0xff;
+//       int g = buffer[gi] & 0xff;
+//       int b = buffer[bi] & 0xff;
+//       frame.pixels[idx++] = 0xFF000000 | (r << 16) | (g << 8) | b;
+//     }
+//     frame.updatePixels();
 
     return frame;
   }
