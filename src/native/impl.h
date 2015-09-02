@@ -7,7 +7,7 @@ typedef struct video_type {
 	GstBus *bus;
 	jobject obj;
 	int loop;
-	GstMapInfo* buf[2];
+	guint buf[2];
 } video;
 
 static void* simplevideo_mainloop(void *data);

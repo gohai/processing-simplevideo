@@ -232,46 +232,6 @@ void setupAppsink(video *v)
   appsink_callbacks->new_sample = appsink_new_sample;
   gst_app_sink_set_callbacks(GST_APP_SINK(v->sink), appsink_callbacks, v, NULL);
   free(appsink_callbacks);
-
-//    g_signal_connect(G_OBJECT(v->sink), "client-draw", G_CALLBACK (drawCallback), NULL);
-}
-
-
-//client draw callback
-// This might be useful:
-// https://github.com/mikecreighton/cinder-GStreamer-Integration/blob/master/src/GstGLVideoPlayer.cpp
-static gboolean drawCallback (GstElement * gl_sink, GstGLContext *context, GstSample * sample, gpointer data)
-{
-    static GLfloat	xrot = 0;
-    static GLfloat	yrot = 0;
-    static GLfloat	zrot = 0;
-    static GTimeVal current_time;
-//     static glong last_sec = current_time.tv_sec;
-//     static gint nbFrames = 0;
-
-    GstVideoFrame v_frame;
-    GstVideoInfo v_info;
-    guint texture = 0;
-    GstBuffer *buf = gst_sample_get_buffer (sample);
-    GstCaps *caps = gst_sample_get_caps (sample);
-
-    gst_video_info_from_caps (&v_info, caps);    
-    if (!gst_video_frame_map (&v_frame, &v_info, buf, (GstMapFlags) (GST_MAP_READ | GST_MAP_GL))) {
-      g_warning ("Failed to map the video buffer");
-      return TRUE;
-    }    
-    
-    texture = *(guint *) v_frame.data[0];
-
-//     g_get_current_time (&current_time);
-//     nbFrames++ ;    
-    
-    
-    gst_video_frame_unmap (&v_frame);
-    
-    g_print("draw: %i\n", texture);
-
-    return TRUE;
 }
 
 
@@ -307,7 +267,7 @@ static GstFlowReturn appsink_new_sample(GstAppSink *sink, gpointer user_data)
     
     texture = *(guint *) v_frame.data[0];
     
-  g_print("draw: %i\n", texture);
+//   g_print("draw: %i\n", texture);
 
 //   GstMemory* memory = gst_buffer_get_all_memory(buffer);
 //   GstMapInfo* map_info = malloc(sizeof(GstMapInfo));
@@ -318,20 +278,20 @@ static GstFlowReturn appsink_new_sample(GstAppSink *sink, gpointer user_data)
 //     return GST_FLOW_ERROR;
 //   }
 // 
-//   video *v = (video*)user_data;
-//   if (v->buf[1] != NULL) {
-//     // free previous sample
+  video *v = (video*)user_data;
+  if (v->buf[1] != 0) {
+    // free previous sample
 //     GstMapInfo *old_map_info = v->buf[1];
 //     GstMemory *old_memory = old_map_info->memory;
 //     gst_memory_unmap(old_memory, old_map_info);
 //     gst_memory_unref(old_memory);
 //     free(old_map_info);
-//     v->buf[1] = NULL;
-//   }
-//   // LOCK
-//   v->buf[1] = v->buf[0];
-//   v->buf[0] = map_info;
-//   // UNLOCK
+    v->buf[1] = 0;
+  }
+  // LOCK
+  v->buf[1] = v->buf[0];
+  v->buf[0] = texture;
+  // UNLOCK
 
   gst_video_frame_unmap (&v_frame);
 
@@ -344,25 +304,28 @@ static GstFlowReturn appsink_new_sample(GstAppSink *sink, gpointer user_data)
 
 
 // Idea: Use gst-gl element?
+// https://github.com/mikecreighton/cinder-GStreamer-Integration/blob/master/src/GstGLVideoPlayer.cpp
+// http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-bad-libs/html/gl.html
 // https://coaxion.net/blog/2014/04/opengl-support-in-gstreamer/
 // http://cgit.freedesktop.org/gstreamer/gst-plugins-bad/tree/tests/examples/gl/generic/doublecube/main.cpp
 
 
-JNIEXPORT jbyteArray JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1get_1frame
+JNIEXPORT jint JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1get_1frame
   (JNIEnv *env, jobject obj, jlong handle)
 {
   video *v = get_video(handle);
-  if (v == NULL) {
+  if (v == 0) {
     return 0L;
   }
 
-  if (v->buf[0] == NULL) {
+  if (v->buf[0] == 0) {
     return 0L;
   }
 
   // LOCK
-  jbyteArray ret = (*env)->NewByteArray(env, v->buf[0]->size);
-  (*env)->SetByteArrayRegion(env, ret, 0, v->buf[0]->size, (const jbyte*)v->buf[0]->data);
+  jint ret = v->buf[0];
+//   jbyteArray ret = (*env)->NewByteArray(env, v->buf[0]->size);
+//   (*env)->SetByteArrayRegion(env, ret, 0, v->buf[0]->size, (const jbyte*)v->buf[0]->data);
   // UNLOCK
   return ret;
 }
