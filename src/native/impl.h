@@ -12,10 +12,11 @@ typedef struct video_type {
 
 static void* simplevideo_mainloop(void *data);
 static GstFlowReturn appsink_new_sample(GstAppSink *sink, gpointer user_data);
+static gboolean drawCallback (GstElement * gl_sink, GstGLContext *context, GstSample * sample, gpointer data);
 static gboolean simplevideo_bus_callback(GstBus *bus, GstMessage *message, gpointer data);
 static video* new_video();
 static video* get_video(long handle);
 static void callback(GstMapInfo map_info);
-static void setupAppsink(video *v);
+static void setupGLsink(video *v);
 
 #endif

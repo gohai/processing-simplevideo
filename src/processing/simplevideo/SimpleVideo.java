@@ -51,7 +51,8 @@ public class SimpleVideo {
     // pipeline description passed to GStreamer
     // first %s is the uri (filled in by native code)
     // appsink must be named "sink" (XXX: change)
-    String pipeline = "uridecodebin uri=%s ! videoconvert ! video/x-raw,format=ARGB ! videoscale ! appsink name=sink caps=\"" + caps + "\"";
+    String pipeline = "uridecodebin uri=%s ! videoconvert ! video/x-raw,format=ARGB ! videoscale ! glimagesink name=sink caps=\"" + caps + "\"";
+//     String pipeline = "uridecodebin uri=%s ! videoconvert ! video/x-raw,format=ARGB ! videoscale ! glupload ! fakesink name=sink";
     // alternatively, a standalone window
     //private static String pipeline = "playbin uri=%s";
 
