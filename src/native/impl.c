@@ -99,7 +99,7 @@ static video* get_video(long handle)
 }
 
 
-JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadFile(JNIEnv *env, jobject obj, jstring _fn, jstring _pipeline)
+JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadFile(JNIEnv *env, jobject obj, jstring _fn, jstring _pipeline, jlong context)
 {
   GError *error = NULL;
 
@@ -132,6 +132,11 @@ JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadF
     g_free(descr);
     return 0L;
   }
+
+  GstElement *glupload = gst_bin_get_by_name (GST_BIN (v->play), "glup");
+  g_print("glupload: %i\n", glupload);  
+  g_object_set (G_OBJECT (glupload), "other-context", context, NULL);
+  gst_object_unref (glupload);
 
   // setup appsink if the pipeline  is using it
   if (strstr(descr, "appsink")) {
@@ -267,25 +272,8 @@ static GstFlowReturn appsink_new_sample(GstAppSink *sink, gpointer user_data)
     
     texture = *(guint *) v_frame.data[0];
     
-//   g_print("draw: %i\n", texture);
-
-//   GstMemory* memory = gst_buffer_get_all_memory(buffer);
-//   GstMapInfo* map_info = malloc(sizeof(GstMapInfo));
-// 
-//   if(!gst_memory_map(memory, map_info, GST_MAP_READ)) {
-//     gst_memory_unref(memory);
-//     gst_sample_unref(sample);
-//     return GST_FLOW_ERROR;
-//   }
-// 
   video *v = (video*)user_data;
   if (v->buf[1] != 0) {
-    // free previous sample
-//     GstMapInfo *old_map_info = v->buf[1];
-//     GstMemory *old_memory = old_map_info->memory;
-//     gst_memory_unmap(old_memory, old_map_info);
-//     gst_memory_unref(old_memory);
-//     free(old_map_info);
     v->buf[1] = 0;
   }
   // LOCK
@@ -295,19 +283,23 @@ static GstFlowReturn appsink_new_sample(GstAppSink *sink, gpointer user_data)
 
   gst_video_frame_unmap (&v_frame);
 
-  //gst_memory_unmap(memory, &map_info);
-  //gst_memory_unref(memory);
   gst_sample_unref(sample);
 
   return GST_FLOW_OK;
 }
 
 
-// Idea: Use gst-gl element?
-// https://github.com/mikecreighton/cinder-GStreamer-Integration/blob/master/src/GstGLVideoPlayer.cpp
+// Homepage of OpenGL Helper Library 
 // http://gstreamer.freedesktop.org/data/doc/gstreamer/head/gst-plugins-bad-libs/html/gl.html
-// https://coaxion.net/blog/2014/04/opengl-support-in-gstreamer/
+
+// Basic example with glimagesink
 // http://cgit.freedesktop.org/gstreamer/gst-plugins-bad/tree/tests/examples/gl/generic/doublecube/main.cpp
+
+// Context sharing example
+// http://cgit.freedesktop.org/gstreamer/gst-plugins-bad/tree/tests/examples/gl/clutter/cluttershare.c
+
+// use in Cinder (check how they handle sound)
+// https://github.com/mikecreighton/cinder-GStreamer-Integration/blob/master/src/GstGLVideoPlayer.cpp
 
 
 JNIEXPORT jint JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1get_1frame

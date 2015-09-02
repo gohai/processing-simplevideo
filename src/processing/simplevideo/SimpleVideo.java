@@ -26,6 +26,7 @@ import java.io.File;
 import java.nio.*;
 import java.lang.reflect.*;
 import processing.core.*;
+import processing.opengl.PJOGL;
 
 public class SimpleVideo {
 
@@ -52,7 +53,7 @@ public class SimpleVideo {
     // first %s is the uri (filled in by native code)
     // appsink must be named "sink" (XXX: change)
 //     String pipeline = "uridecodebin uri=%s ! videoconvert ! video/x-raw,format=ARGB ! videoscale ! glimagesink name=sink caps=\"" + caps + "\"";
-    String pipeline = "uridecodebin uri=%s ! videoconvert ! " + caps + " ! videoscale ! glupload ! appsink name=sink";
+    String pipeline = "uridecodebin uri=%s ! videoconvert ! " + caps + " ! videoscale ! glupload name=glup ! appsink name=sink";
     // alternatively, a standalone window
     //private static String pipeline = "playbin uri=%s";
 
@@ -84,7 +85,13 @@ public class SimpleVideo {
       }
     }
 
-    handle = gstreamer_loadFile(fn, pipeline);
+
+    PJOGL pgl = (PJOGL)parent.beginPGL();
+    long ctx = pgl.context.getHandle();
+    PApplet.println("GL Context native handle: " + ctx);
+    handle = gstreamer_loadFile(fn, pipeline, ctx);    
+    parent.endPGL();
+    
     if (handle == 0) {
       throw new RuntimeException("Could not load video");
     }
@@ -149,7 +156,7 @@ public class SimpleVideo {
 
   public int getFrame() {
     int tex = gstreamer_get_frame(handle);
-    System.out.println("texture " + tex);
+//     System.out.println("texture " + tex);
   /*
     byte[] buffer = gstreamer_get_frame(handle);
     if (buffer == null) {
@@ -192,7 +199,7 @@ public class SimpleVideo {
   */
 
   private static native boolean gstreamer_init();
-  private native long gstreamer_loadFile(String fn, String pipeline);
+  private native long gstreamer_loadFile(String fn, String pipeline, long context);
   private native void gstreamer_play(long handle, boolean play);
   private native void gstreamer_seek(long handle, float sec);
   private native void gstreamer_set_loop(long handle, boolean loop);
