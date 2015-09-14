@@ -8,8 +8,35 @@
 #include "impl.h"
 #include "iface.h"
 
+// https://github.com/ystreet/gst-plugins-gl/blob/master/tests/examples/gtk/gstgtk.c
+#if defined(GST_GL_HAVE_WINDOW_WIN32) && defined(GDK_WINDOWING_WIN32)
+// #include <gdk/gdkwin32.h>
+#endif
+
+#if defined(GST_GL_HAVE_WINDOW_COCOA)
+// #include <gdk/gdkquartz.h>
+//   #include <gst/gl/cocoa/gstglcaopengllayer.h>
+//   #include <gst/gl/cocoa/gstglcontext_cocoa.h>  
+#endif
+
+#if GST_GL_HAVE_WINDOW_WAYLAND && defined (GDK_WINDOWING_WAYLAND)
+// #include <gdk/gdkwayland.h>
+// #include <gst/gl/wayland/gstgldisplay_wayland.h>
+#endif
+
+#if defined(GST_GL_HAVE_WINDOW_X11) && defined(GDK_WINDOWING_X11)
+// #include <gdk/gdkx.h>
+// #include <gst/gl/x11/gstgldisplay_x11.h>
+// #include <gst/gl/x11/gstglcontext_glx.h>
+#endif
+
+
+
 GThread *thread;
 GMainLoop *loop;
+unsigned long glctx;
+unsigned long glwin;
+guintptr ctx_ptr;
 
 #define MAX_VIDEOS 10
 video videos[MAX_VIDEOS];
@@ -40,7 +67,7 @@ static void* simplevideo_mainloop(void *data) {
 
 static gboolean simplevideo_bus_callback(GstBus *bus, GstMessage *message, gpointer data)
 {
-  //g_print("Got %s message\n", GST_MESSAGE_TYPE_NAME (message));
+  // g_print("Got %s message\n", GST_MESSAGE_TYPE_NAME (message));
 
   switch (GST_MESSAGE_TYPE (message)) {
     case GST_MESSAGE_ERROR: {
@@ -68,6 +95,83 @@ static gboolean simplevideo_bus_callback(GstBus *bus, GstMessage *message, gpoin
       }
       //g_main_loop_quit(loop);
       break;
+    }
+    case GST_MESSAGE_NEED_CONTEXT: {
+      g_print("Got %s message\n", GST_MESSAGE_TYPE_NAME (message));
+      
+      const gchar *context_type;
+      GstContext *context = NULL;
+     
+      gst_message_parse_context_type (message, &context_type);
+      
+      if (g_strcmp0 (context_type, "gst.gl.app_context") == 0) {
+#if GST_GL_HAVE_OPENGL
+  g_print("GST_GL_HAVE_OPENGL\n");
+#endif
+#if GST_GL_HAVE_OPENGL2
+  g_print("GST_GL_HAVE_OPENGL2\n");
+#endif
+#if GST_GL_HAVE_OPENGL3
+  g_print("GST_GL_HAVE_OPENGL3\n");
+#endif
+#if GST_GL_HAVE_OPENGL4
+  g_print("GST_GL_HAVE_OPENGL4\n");
+#endif
+#if GST_GL_HAVE_GLES1
+  g_print("GST_GL_API_GLES1\n");
+#endif
+#if GST_GL_HAVE_GLES2
+  g_print("GST_GL_API_GLES2\n");
+#endif
+
+#if GST_GL_HAVE_PLATFORM_GLX
+  g_print("GST_GL_HAVE_PLATFORM_GLX\n");
+#endif
+#if GST_GL_HAVE_PLATFORM_EGL
+  g_print("GST_GL_HAVE_PLATFORM_EGL\n");
+#endif
+#if GST_GL_HAVE_PLATFORM_CGL
+  g_print("GST_GL_HAVE_PLATFORM_CGL\n");
+#endif
+#if GST_GL_HAVE_PLATFORM_WGL
+  g_print("GST_GL_HAVE_PLATFORM_WGL\n");
+#endif
+#if GST_GL_HAVE_PLATFORM_EAGL
+  g_print("GST_GL_HAVE_PLATFORM_EAGL\n");
+#endif
+         
+         g_print("setting %s\n", context_type);
+
+         /* get this from the application somehow */
+         GstGLContext *gl_context;         
+         GstGLDisplay* display = gst_gl_display_new();
+//          guintptr ctx_ptr = gst_gl_context_get_current_gl_context(GST_GL_PLATFORM_CGL);    
+
+         
+         gl_context = gst_gl_context_new_wrapped(display, ctx_ptr /*glctx*/, 
+                                  GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL);
+       
+//        g_print("HAHAHA %i\n", gst_gl_context_cocoa_get_current_context ());
+       
+//                  g_print("display %lu\n", display);         
+//                  g_print("context %lu\n", ctx_ptr);   
+//                  g_print("external context %lu\n", glctx);
+                     
+                 g_print("GstGLContext %lu\n", gl_context); 
+                 
+        
+        GstStructure *s;
+
+        context = gst_context_new (GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+        s = gst_context_writable_structure (context);
+        gst_structure_set (s, "context", GST_GL_TYPE_CONTEXT, gl_context, NULL);
+
+        gst_element_set_context (GST_ELEMENT (message->src), context);
+      }
+      if (context)
+        gst_context_unref (context);
+      break;
+            
     }
     default:
       break;
@@ -99,7 +203,7 @@ static video* get_video(long handle)
 }
 
 
-JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadFile(JNIEnv *env, jobject obj, jstring _fn, jstring _pipeline, jlong context)
+JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadFile(JNIEnv *env, jobject obj, jstring _fn, jstring _pipeline, jlong window, jlong context)
 {
   GError *error = NULL;
 
@@ -107,6 +211,16 @@ JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadF
   if (v == NULL) {
     return 0L;
   }
+
+  GstGLPlatform platform;
+  GstGLAPI gl_api;
+  guintptr gl_handle;
+//   #if GST_GL_HAVE_WINDOW_X11  
+//   #endif
+//   #if GST_GL_HAVE_WINDOW_WAYLAND
+//   #endif
+//   #if GST_GL_HAVE_WINDOW_COCOA
+//   #endif
 
   // encode filename as an uri
   const char *fn = (*env)->GetStringUTFChars(env, _fn, JNI_FALSE);
@@ -133,11 +247,19 @@ JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadF
     return 0L;
   }
 
-  GstElement *glupload = gst_bin_get_by_name (GST_BIN (v->play), "glup");
-  g_print("glupload: %i\n", glupload);  
-  g_object_set (G_OBJECT (glupload), "other-context", context, NULL);
-  gst_object_unref (glupload);
+//   GstElement *glupload = gst_bin_get_by_name (GST_BIN (v->play), "glup");
+//   g_print("glupload: %i\n", glupload);  
+//   g_object_set (G_OBJECT (glupload), "external-opengl-context", context, NULL);
+//   gst_object_unref (glupload);
 
+    ctx_ptr = gst_gl_context_get_current_gl_context(GST_GL_PLATFORM_CGL);    
+    g_print("gl context at init  %lu\n", ctx_ptr);
+    glctx = context;
+    glwin = window;
+//     g_print("external context at init  %lu\n", context);
+//     g_print("external window at init  %lu\n", window);
+    g_print("************************************\n");
+        
   // setup appsink if the pipeline  is using it
   if (strstr(descr, "appsink")) {
     setupAppsink(v);

@@ -27,6 +27,8 @@ import java.nio.*;
 import java.lang.reflect.*;
 import processing.core.*;
 import processing.opengl.PJOGL;
+import processing.opengl.PSurfaceJOGL;
+import com.jogamp.newt.opengl.GLWindow;
 
 public class SimpleVideo {
 
@@ -85,11 +87,15 @@ public class SimpleVideo {
       }
     }
 
-
     PJOGL pgl = (PJOGL)parent.beginPGL();
+    PSurfaceJOGL surf = (PSurfaceJOGL)(parent.getSurface());
+//     System.out.println("NEWT Display handle: "  + surf.display.getHandle());
+    GLWindow win = (GLWindow)(surf.getNative());
+//     System.out.println("NEWT Window handle: "  + win.getHandle());
+    System.out.println("NEWT Window handle: "  + win.getHandle() );
     long ctx = pgl.context.getHandle();
     PApplet.println("GL Context native handle: " + ctx);
-    handle = gstreamer_loadFile(fn, pipeline, ctx);    
+    handle = gstreamer_loadFile(fn, pipeline, win, ctx);    
     parent.endPGL();
     
     if (handle == 0) {
@@ -199,7 +205,7 @@ public class SimpleVideo {
   */
 
   private static native boolean gstreamer_init();
-  private native long gstreamer_loadFile(String fn, String pipeline, long context);
+  private native long gstreamer_loadFile(String fn, String pipeline, long window, long context);
   private native void gstreamer_play(long handle, boolean play);
   private native void gstreamer_seek(long handle, float sec);
   private native void gstreamer_set_loop(long handle, boolean loop);

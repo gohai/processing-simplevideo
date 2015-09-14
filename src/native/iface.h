@@ -21,7 +21,7 @@ JNIEXPORT jboolean JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1in
  * Signature: (Ljava/lang/String;Ljava/lang/String;)J
  */
 JNIEXPORT jlong JNICALL Java_processing_simplevideo_SimpleVideo_gstreamer_1loadFile
-  (JNIEnv *, jobject, jstring, jstring, jlong);
+  (JNIEnv *, jobject, jstring, jstring, jlong, jlong);
 
 /*
  * Class:     processing_simplevideo_SimpleVideo
