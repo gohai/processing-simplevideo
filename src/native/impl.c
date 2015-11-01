@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <jni.h>
-#include <gst/gl/gl.h>
+#include <gst/gl/gl.h>	// part of libgstreamer-plugins-bad1.0-dev
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>   // for GstAppSink, part of gstreamer-plugins-base
 #include "impl.h"
